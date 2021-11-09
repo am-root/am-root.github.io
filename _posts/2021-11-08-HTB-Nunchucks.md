@@ -80,20 +80,20 @@ On port 443, hostname is given by nmap output, I will quickly add it to my host 
 
 Visiting `10.10.11.122` or `nunchucks.htb:80` redirects to `https`.
 
-<img src="/media/janak/workshop/website/chirpy/am-root.github.io/image/hackthebox/nunchucks/01.png" alt="01" style="zoom:67%;" />
+<img src="/image/hackthebox/nunchucks/01.png" alt="01" style="zoom:67%;" />
 
 There is a team listed at the bottom of the page, I made small list from them.
 
-> mike page
-> samnatha bloom
-> nicolas ritcher
-> mary longhorn
-> susanne blake
+> mike page \
+> samnatha bloom \
+> nicolas ritcher \
+> mary longhorn \
+> susanne blake \
 > vanya dropper
 
 There are `login` and `signup` pages also but both of them are throwing errors..
 
-<img src="/media/janak/workshop/website/chirpy/am-root.github.io/image/hackthebox/nunchucks/02.png" alt="02" style="zoom: 67%;" />
+<img src="/image/hackthebox/nunchucks/02.png" alt="02" style="zoom: 67%;" />
 
 ## Discovering store.nunchucks.htb
 
@@ -108,7 +108,7 @@ ffuf -u https://nunchucks.htb/ -w /opt/Tools/SecLists/Discovery/Web-Content/raft
 * `-H` : Header, Here Header `Host` is used to scan for Vhosts.
 * `-fl` : To filter lines in repsonse. 
 
-![03](/media/janak/workshop/website/chirpy/am-root.github.io/image/hackthebox/nunchucks/03.png)
+![03](/image/hackthebox/nunchucks/03.png)
 
 Adding it to `/etc/hosts`
 
@@ -116,7 +116,7 @@ Adding it to `/etc/hosts`
 
 At the bottom of `https://nunchucks.htb` page was `Store: Coming soon` was written. It was hint for Vhost as well.
 
-![](/media/janak/workshop/website/chirpy/am-root.github.io/image/hackthebox/nunchucks/04.png)
+![04](/image/hackthebox/nunchucks/04.png)
 
 
 
@@ -124,47 +124,41 @@ At the bottom of `https://nunchucks.htb` page was `Store: Coming soon` was writt
 
 Now visting `store.nunchucks.htb`,
 
-<img src="/media/janak/workshop/website/chirpy/am-root.github.io/image/hackthebox/nunchucks/05.png" alt="05" style="zoom:67%;" />
+<img src="/image/hackthebox/nunchucks/05.png" alt="05" style="zoom:67%;" />
 
 
 
 I entered my email address in textbox and captured the request,
 
-![](/media/janak/workshop/website/chirpy/am-root.github.io/image/hackthebox/nunchucks/06.png)
+![06](/image/hackthebox/nunchucks/06.png)
 
 After looking at the request and response, both are in JSON format and my input was reflected on response.
 
  Also noted that server is ExpressJS. Express.js, or simply Express, is a back end web application framework for Node.js.
 
-<img src="/media/janak/workshop/website/chirpy/am-root.github.io/image/hackthebox/nunchucks/07.png" style="zoom:80%;" />
+<img src="/image/hackthebox/nunchucks/07.png" style="zoom:80%;" />
 
 
 
 I tried XSS, SQL non of them gave me fruitful results. After keep looking for any perculiar behaviour I found that my input was rendered by back end engine.
 
-<img src="/media/janak/workshop/website/chirpy/am-root.github.io/image/hackthebox/nunchucks/08.png" alt="08" style="zoom:80%;" />
+<img src="/image/hackthebox/nunchucks/08.png" alt="08" style="zoom:80%;" />
 
  Googling for ExpressJS template engines lead me to [a list of template engines](https://expressjs.com/en/resources/template-engines.html) used.  Name of the box and this template engine sounds similar hence clearly shows that this is inteded vulnerability.
 
-<img src="/media/janak/workshop/website/chirpy/am-root.github.io/image/hackthebox/nunchucks/09.png" alt="09" style="zoom:80%;" />
+<img src="/image/hackthebox/nunchucks/09.png" alt="09" style="zoom:80%;" />
 
 I googled for `Nunjucks template injection` and it lead me to [a blog site that showed POC](http://disse.cting.org/2016/08/02/2016-08-02-sandbox-break-out-nunjucks-template-engine) on how to exploit data.
 
-> ```javascript
-> {{range.constructor("return global.process.mainModule.require('child_process').execSync('tail /etc/passwd')")()}}
-> ```
+![10-01](/image/hackthebox/nunchucks/10-01.png)
 
-<img src="/media/janak/workshop/website/chirpy/am-root.github.io/image/hackthebox/nunchucks/10.png" alt="10" style="zoom:80%;" />
-
-
+![10](/image/hackthebox/nunchucks/10.png)
 
 I changed `tail` to `cat` and I got more data than previous response, I was able to extract whole `/etc/passwd` file. After looking at the `/etc/passwd`, user is David. So I tried extracting ssh key residing in home directory of david, but it is asking for password.
 
+![11](/image/hackthebox/nunchucks/11.png)
 
-
-![11](/media/janak/workshop/website/chirpy/am-root.github.io/image/hackthebox/nunchucks/11.png)
-
-<img src="/media/janak/workshop/website/chirpy/am-root.github.io/image/hackthebox/nunchucks/12.png" alt="12" style="zoom:80%;" />
+<img src="/image/hackthebox/nunchucks/12.png" alt="12" style="zoom:80%;" />
 
 Now I used nc reverse shell from [pentestmonkey](https://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet) and I got shell as user.
 
@@ -174,21 +168,23 @@ Now I used nc reverse shell from [pentestmonkey](https://pentestmonkey.net/cheat
 
 While getting proper shell, this box is really sensitive I lost my reverse shell trying to put SSH key inside `authorized_keys`. Anyway I did that from burp suite.
 
-![13](/media/janak/workshop/website/chirpy/am-root.github.io/image/hackthebox/nunchucks/13.png)
+![13](/image/hackthebox/nunchucks/13.png)
 
 I got proper SSH shell.
 
-<img src="/media/janak/workshop/website/chirpy/am-root.github.io/image/hackthebox/nunchucks/14.png" alt="14" style="zoom: 67%;" />
+<img src="/image/hackthebox/nunchucks/14.png" alt="14" style="zoom: 67%;" />
 
 # Getting root
 
+## setuid capability
+
 User David has one interesting capability, he can run perl commands with setuid capability.
 
-![15](/media/janak/workshop/website/chirpy/am-root.github.io/image/hackthebox/nunchucks/15.png)
+![15](/image/hackthebox/nunchucks/15.png)
 
 I head over to GTFObins and copied their [capability payload](https://gtfobins.github.io/gtfobins/perl/#capabilities) but I did not get shell as root.
 
-![16](/media/janak/workshop/website/chirpy/am-root.github.io/image/hackthebox/nunchucks/16.png)
+![16](/image/hackthebox/nunchucks/16.png)
 
 After looking for more information, I came across some interesting files in `/opt` directory.
 
@@ -244,6 +240,8 @@ printlog "Completed";
 
 This file on execution zipping files from web directory to `/opt/web_backups` also it is using POSIX to setuid(0) i.e. setting it to root. 
 
+## AppArmor
+
 It is using AppArmor for execution. AppArmor limits resources for programs and its profiles allows user capability. Looking at the profile in `/etc/apparmor.d`,
 
 ``` bash
@@ -283,21 +281,21 @@ Reading file showed that perl is denied  `rwx` access on /root, while it can run
 
  Let's try those commands,
 
-![17](/media/janak/workshop/website/chirpy/am-root.github.io/image/hackthebox/nunchucks/17.png)
+![17](/image/hackthebox/nunchucks/17.png)
 
 [Bug from launchpad](https://bugs.launchpad.net/apparmor/+bug/1911431) shows that adding [Shebang(#)](https://en.wikipedia.org/wiki/Shebang_(Unix)#:~:text=In%20computing%2C%20a%20shebang%20is,bang%2C%20or%20hash%2Dpling.) will bypass security checks and execute arbitrary script.
 
 I created small script mentioned before from GTFObins, and added shebang 
 
->  #!/usr/bin/perl
-> use POSIX qw(setuid);
-> POSIX::setuid(0); 
-> exec "/bin/sh";
+>  #!/usr/bin/perl \
+> use POSIX qw(setuid); \
+> POSIX::setuid(0); \
+> exec "/bin/sh"; 
 
 gave the script `+x` permission
 
-> chmod +x shell.pl
+> chmod +x shell.pl 
 
 and *voilà* I got root.
 
-![18](/media/janak/workshop/website/chirpy/am-root.github.io/image/hackthebox/nunchucks/18.png)
+![18](/image/hackthebox/nunchucks/18.png)
